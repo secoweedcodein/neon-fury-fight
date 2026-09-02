@@ -50,13 +50,14 @@ function Rain() {
   useFrame((_, rawDelta) => {
     const delta = Math.min(rawDelta, 0.05);
     const geo = ref.current?.geometry;
-    if (!geo) return;
-    const arr = geo.attributes.position!.array as Float32Array;
+    const attr = geo?.attributes["position"];
+    if (!attr) return;
+    const arr = attr.array as Float32Array;
     for (let i = 1; i < arr.length; i += 3) {
-      arr[i] -= 16 * delta;
-      if (arr[i]! < 0) arr[i] = 18;
+      const next = (arr[i] ?? 0) - 16 * delta;
+      arr[i] = next < 0 ? 18 : next;
     }
-    geo.attributes.position!.needsUpdate = true;
+    attr.needsUpdate = true;
   });
 
   return (
