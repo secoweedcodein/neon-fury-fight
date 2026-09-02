@@ -89,5 +89,5 @@ export const CHARACTERS: Record<string, CharacterDef> = {
 export const DEFAULT_CHARACTER_ID = "ash";
 
 export function getCharacter(id: string): CharacterDef {
-  return CHARACTERS[id] ?? CHARACTERS[DEFAULT_CHARACTER_ID];
+  return CHARACTERS[id] ?? (CHARACTERS[DEFAULT_CHARACTER_ID] as CharacterDef);
 }
