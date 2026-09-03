@@ -100,11 +100,11 @@ export function TestStage() {
       <fog attach="fog" args={["#070a13", 14, 52]} />
 
       {/* Iluminación: oscura pero legible */}
-      <ambientLight intensity={0.42} color="#3b4a63" />
-      <hemisphereLight args={["#2a3d5c", "#0a0d14", 0.5]} />
+      <ambientLight intensity={0.7} color="#4a5f80" />
+      <hemisphereLight args={["#3a5070", "#141a26", 0.8]} />
       <directionalLight
         position={[6, 14, 9]}
-        intensity={1.05}
+        intensity={1.6}
         color="#a9c8ff"
         castShadow
         shadow-mapSize-width={1024}
@@ -116,6 +116,8 @@ export function TestStage() {
       />
       <pointLight position={[-7, 3.4, 3]} intensity={22} color="#00e5ff" distance={20} decay={2} />
       <pointLight position={[7, 3.4, 3]} intensity={22} color="#ff2f8e" distance={20} decay={2} />
+      {/* Luz de relleno frontal para que los luchadores se lean bien */}
+      <pointLight position={[0, 4, 8]} intensity={14} color="#cfe0ff" distance={26} decay={2} />
 
       <Environment>
         <Lightformer intensity={1.2} color="#3aa6ff" position={[0, 6, 4]} scale={[16, 3, 1]} />
@@ -131,12 +133,12 @@ export function TestStage() {
       {/* Asfalto mojado */}
       <mesh rotation-x={-Math.PI / 2} receiveShadow>
         <planeGeometry args={[70, 46]} />
-        <meshStandardMaterial color="#0c0f16" roughness={0.24} metalness={0.72} />
+        <meshStandardMaterial color="#161b26" roughness={0.3} metalness={0.6} />
       </mesh>
       {/* Franja del área de combate */}
       <mesh rotation-x={-Math.PI / 2} position={[0, 0.01, 0]}>
         <planeGeometry args={[STAGE_BOUNDS.x * 2, STAGE_BOUNDS.z * 2 + 2]} />
-        <meshStandardMaterial color="#12161f" roughness={0.35} metalness={0.5} />
+        <meshStandardMaterial color="#1c2331" roughness={0.4} metalness={0.45} />
       </mesh>
       {/* Límites luminosos */}
       {[-STAGE_BOUNDS.x, STAGE_BOUNDS.x].map((x) => (
