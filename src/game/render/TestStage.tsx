@@ -116,6 +116,8 @@ export function TestStage() {
       />
       <pointLight position={[-7, 3.4, 3]} intensity={22} color="#00e5ff" distance={20} decay={2} />
       <pointLight position={[7, 3.4, 3]} intensity={22} color="#ff2f8e" distance={20} decay={2} />
+      {/* Luz de relleno frontal para que los luchadores se lean bien */}
+      <pointLight position={[0, 4, 8]} intensity={14} color="#cfe0ff" distance={26} decay={2} />
 
       <Environment>
         <Lightformer intensity={1.2} color="#3aa6ff" position={[0, 6, 4]} scale={[16, 3, 1]} />

@@ -50,7 +50,13 @@ export function Fighter({ state }: Props) {
         {/* torso */}
         <mesh position={[0, 1.18, 0]} castShadow>
           <capsuleGeometry args={[0.28, 0.6, 6, 14]} />
-          <meshStandardMaterial color={char.colors.suit} roughness={0.55} metalness={0.25} />
+          <meshStandardMaterial
+            color={char.colors.suit}
+            emissive={char.colors.suit}
+            emissiveIntensity={0.35}
+            roughness={0.55}
+            metalness={0.25}
+          />
         </mesh>
         {/* banda de neón del implante */}
         <mesh position={[0, 1.32, 0.2]} castShadow>
@@ -87,11 +93,11 @@ export function Fighter({ state }: Props) {
         {/* piernas */}
         <mesh position={[-0.15, 0.44, 0]} castShadow>
           <capsuleGeometry args={[0.12, 0.5, 4, 8]} />
-          <meshStandardMaterial color="#14171f" roughness={0.7} />
+          <meshStandardMaterial color="#2a3040" emissive="#1a2030" emissiveIntensity={0.5} roughness={0.7} />
         </mesh>
         <mesh position={[0.15, 0.44, 0]} castShadow>
           <capsuleGeometry args={[0.12, 0.5, 4, 8]} />
-          <meshStandardMaterial color="#14171f" roughness={0.7} />
+          <meshStandardMaterial color="#2a3040" emissive="#1a2030" emissiveIntensity={0.5} roughness={0.7} />
         </mesh>
       </group>
       {/* sombra de contacto barata */}
