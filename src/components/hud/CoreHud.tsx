@@ -1,7 +1,8 @@
-// HUD de la FASE 1: vida (placeholder), stamina real y estado de depuración.
+// HUD (FASES 1-3): vida, stamina, timer real, pips de round, combos y anuncios.
 
 import { useEffect, useRef, useState } from "react";
 import type { MatchState } from "../../game/core/types";
+import { ROUNDS_TO_WIN, TICK_RATE } from "../../game/core/types";
 import { getCharacter } from "../../game/data/characters";
 
 function Bar({
@@ -32,6 +33,21 @@ function Bar({
   );
 }
 
+function Pips({ wins, mirrored }: { wins: number; mirrored?: boolean }) {
+  return (
+    <div className={`mt-1 flex gap-1 ${mirrored ? "justify-end" : ""}`}>
+      {Array.from({ length: ROUNDS_TO_WIN }).map((_, i) => (
+        <span
+          key={i}
+          className={`h-2 w-2 rotate-45 border border-border ${
+            i < wins ? "bg-hud-timer shadow-neon" : "bg-muted"
+          }`}
+        />
+      ))}
+    </div>
+  );
+}
+
 export function CoreHud({ match }: { match: React.RefObject<MatchState> }) {
   const [, force] = useState(0);
   const raf = useRef<number>(0);
@@ -55,6 +71,16 @@ export function CoreHud({ match }: { match: React.RefObject<MatchState> }) {
   const [p1, p2] = m.fighters;
   const c1 = getCharacter(p1.characterId);
   const c2 = getCharacter(p2.characterId);
+  const seconds = Math.ceil(m.timer / TICK_RATE);
+
+  const showAnnounce =
+    m.phase === "intro" ||
+    m.phase === "roundEnd" ||
+    m.phase === "matchEnd" ||
+    (m.phase === "fight" && m.phaseTicks > 0);
+
+  const matchWinner =
+    m.phase === "matchEnd" ? (m.wins[0] > m.wins[1] ? c1.name : c2.name) : null;
 
   return (
     <div className="pointer-events-none fixed inset-0 z-10 select-none">
@@ -69,11 +95,19 @@ export function CoreHud({ match }: { match: React.RefObject<MatchState> }) {
           <div className="mt-1 h-2">
             <Bar value={p1.stamina} max={c1.maxStamina} tone="stamina" />
           </div>
+          <Pips wins={m.wins[0]} />
+          {p1.comboCount > 1 && (
+            <div className="mt-2 font-display text-lg text-hud-timer">{p1.comboCount} HITS</div>
+          )}
         </div>
 
         <div className="text-center">
-          <div className="font-display text-3xl leading-none text-hud-timer md:text-4xl">99</div>
-          <div className="mt-1 text-[0.65rem] tracking-[0.35em] text-muted-foreground">ROUND 1</div>
+          <div className="font-display text-3xl leading-none text-hud-timer md:text-4xl">
+            {seconds}
+          </div>
+          <div className="mt-1 text-[0.65rem] tracking-[0.35em] text-muted-foreground">
+            ROUND {m.round}
+          </div>
         </div>
 
         <div className="w-[38%] max-w-md text-right">
@@ -86,11 +120,29 @@ export function CoreHud({ match }: { match: React.RefObject<MatchState> }) {
           <div className="mt-1 h-2">
             <Bar value={p2.stamina} max={c2.maxStamina} tone="stamina" mirrored />
           </div>
+          <Pips wins={m.wins[1]} mirrored />
+          {p2.comboCount > 1 && (
+            <div className="mt-2 font-display text-lg text-hud-timer">{p2.comboCount} HITS</div>
+          )}
         </div>
       </div>
 
+      {showAnnounce && (
+        <div className="absolute left-1/2 top-[38%] -translate-x-1/2 -translate-y-1/2 text-center">
+          <div className="font-display text-5xl tracking-[0.2em] text-hud-timer drop-shadow-[0_0_18px_currentColor] md:text-7xl">
+            {m.announce}
+          </div>
+          {matchWinner && (
+            <div className="mt-3 font-display text-xl tracking-[0.3em] text-foreground">
+              {matchWinner} GANA EL COMBATE
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded border border-border bg-card/70 px-4 py-2 text-center text-[0.7rem] tracking-[0.2em] text-muted-foreground backdrop-blur">
-        W/S AVANZAR · A/D LATERAL · SPACE SALTO · SHIFT ESQUIVA · CTRL AGACHARSE
+        W/S AVANZAR (S = BLOQUEAR) · A/D LATERAL · SPACE SALTO · SHIFT ESQUIVA · CTRL AGACHARSE
+        <br />J GOLPE · K FUERTE · L PATADA · U AGARRE
       </div>
     </div>
   );
