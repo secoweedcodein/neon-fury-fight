@@ -1,11 +1,17 @@
-// Simulación determinista de movimiento (FASE 1).
+// Simulación determinista de movimiento, combate y rounds (FASES 1-3).
 // Tick fijo, sin acceso a DOM ni a Three.js: reutilizable en el servidor.
 
 import { getCharacter } from "../data/characters";
+import { startAttack, stepCombat } from "../combat/resolve";
 import {
   EMPTY_INTENT,
+  INTRO_TICKS,
+  ROUND_END_TICKS,
+  ROUND_SECONDS,
+  ROUNDS_TO_WIN,
   STAGE_BOUNDS,
   TICK_DT,
+  TICK_RATE,
   type FighterState,
   type InputIntent,
   type MatchState,
@@ -29,6 +35,16 @@ export function createFighter(id: string, characterId: string, x: number): Fight
     dodgeCooldown: 0,
     health: char.maxHealth,
     stamina: char.maxStamina,
+    action: null,
+    hitstun: 0,
+    blockstun: 0,
+    blocking: false,
+    guardBroken: 0,
+    comboCount: 0,
+    comboTimer: 0,
+    flash: 0,
+    attackBuffer: null,
+    bufferTicks: 0,
   };
 }
 
@@ -36,18 +52,35 @@ export function createMatchState(charA: string, charB: string): MatchState {
   return {
     tick: 0,
     fighters: [createFighter("p1", charA, -4), createFighter("p2", charB, 4)],
+    phase: "intro",
+    phaseTicks: INTRO_TICKS,
+    round: 1,
+    wins: [0, 0],
+    timer: ROUND_SECONDS * TICK_RATE,
+    lastRoundWinner: -1,
+    announce: "ROUND 1",
+    events: [],
   };
 }
 
 const DODGE_TICKS = 16;
 const DODGE_COOLDOWN_TICKS = 34;
 const STAMINA_REGEN_PER_SEC = 18;
+const BUFFER_TICKS = 12;
 
 function damp(value: number, k: number, dt: number) {
   return value * Math.exp(-k * dt);
 }
 
-function stepFighter(f: FighterState, intent: InputIntent, opponent: FighterState) {
+function pickAttack(intent: InputIntent): string | null {
+  if (intent.heavy) return "heavy";
+  if (intent.kick) return "kick";
+  if (intent.grab) return "grab";
+  if (intent.light) return "light";
+  return null;
+}
+
+function stepFighter(f: FighterState, intent: InputIntent, opponent: FighterState, canAct: boolean) {
   const { movement: m, maxStamina } = getCharacter(f.characterId);
 
   // Orientación de combate: siempre mirando al rival mientras se está en suelo.
@@ -57,12 +90,46 @@ function stepFighter(f: FighterState, intent: InputIntent, opponent: FighterStat
 
   if (f.dodgeCooldown > 0) f.dodgeCooldown--;
   if (f.dodgeTicks > 0) f.dodgeTicks--;
+  if (f.hitstun > 0) f.hitstun--;
+  if (f.blockstun > 0) f.blockstun--;
+  if (f.guardBroken > 0) f.guardBroken--;
+  if (f.bufferTicks > 0) {
+    f.bufferTicks--;
+    if (f.bufferTicks === 0) f.attackBuffer = null;
+  }
+  if (f.comboTimer > 0) {
+    f.comboTimer--;
+    if (f.comboTimer === 0) f.comboCount = 0;
+  }
+  if (f.flash > 0) f.flash--;
 
-  f.crouching = intent.crouch && f.grounded && f.dodgeTicks === 0;
+  const stunned = f.hitstun > 0 || f.blockstun > 0;
+  const busy = !canAct || stunned || f.action !== null;
+
+  // Buffer de ataque
+  const wanted = pickAttack(intent);
+  if (wanted && canAct && !stunned) {
+    if (!f.action) {
+      startAttack(f, wanted);
+    } else {
+      f.attackBuffer = wanted;
+      f.bufferTicks = BUFFER_TICKS;
+    }
+  }
+
+  f.crouching = !busy && intent.crouch && f.grounded && f.dodgeTicks === 0;
+
+  // Bloqueo: retroceder sin atacar en el suelo.
+  f.blocking = !busy && f.grounded && intent.forward < 0 && f.dodgeTicks === 0;
 
   // Esquiva: impulso corto en la dirección de entrada, cuesta stamina.
   const canDodge =
-    intent.dodge && f.grounded && f.dodgeTicks === 0 && f.dodgeCooldown === 0 && f.stamina >= m.dodgeStamina;
+    !busy &&
+    intent.dodge &&
+    f.grounded &&
+    f.dodgeTicks === 0 &&
+    f.dodgeCooldown === 0 &&
+    f.stamina >= m.dodgeStamina;
   if (canDodge) {
     const dirX = intent.forward !== 0 ? Math.sign(intent.forward) * f.facing : -f.facing;
     const dirZ = Math.sign(intent.lateral);
@@ -73,8 +140,8 @@ function stepFighter(f: FighterState, intent: InputIntent, opponent: FighterStat
     f.dodgeCooldown = DODGE_COOLDOWN_TICKS;
   }
 
-  const locked = f.dodgeTicks > 0;
-  const speedScale = f.crouching ? 0.45 : 1;
+  const locked = f.dodgeTicks > 0 || busy;
+  const speedScale = f.crouching ? 0.45 : f.blocking ? 0.6 : 1;
 
   if (!locked) {
     // Aceleración: adelante = hacia el rival.
@@ -100,7 +167,7 @@ function stepFighter(f: FighterState, intent: InputIntent, opponent: FighterStat
       f.grounded = false;
     }
   } else {
-    f.vx = damp(f.vx, 5.5, TICK_DT);
+    f.vx = damp(f.vx, stunned ? 7 : 5.5, TICK_DT);
     f.vz = damp(f.vz, 5.5, TICK_DT);
   }
 
@@ -124,8 +191,9 @@ function stepFighter(f: FighterState, intent: InputIntent, opponent: FighterStat
   f.z = Math.max(-STAGE_BOUNDS.z, Math.min(STAGE_BOUNDS.z, f.z));
 
   // Regeneración de stamina al no gastar
-  if (!canDodge) {
-    f.stamina = Math.min(maxStamina, f.stamina + STAMINA_REGEN_PER_SEC * TICK_DT);
+  if (!canDodge && !f.action) {
+    const rate = f.blocking ? STAMINA_REGEN_PER_SEC * 0.4 : STAMINA_REGEN_PER_SEC;
+    f.stamina = Math.min(maxStamina, f.stamina + rate * TICK_DT);
   }
 }
 
@@ -142,11 +210,84 @@ function resolveOverlap(a: FighterState, b: FighterState) {
   }
 }
 
+function resetForRound(state: MatchState) {
+  const [a, b] = state.fighters;
+  const na = createFighter(a.id, a.characterId, -4);
+  const nb = createFighter(b.id, b.characterId, 4);
+  Object.assign(a, na);
+  Object.assign(b, nb);
+  state.timer = ROUND_SECONDS * TICK_RATE;
+  state.events.length = 0;
+}
+
+function endRound(state: MatchState, winner: number) {
+  state.lastRoundWinner = winner;
+  if (winner === 0 || winner === 1) {
+    state.wins[winner]++;
+    state.announce = `${getCharacter(state.fighters[winner].characterId).name} WINS`;
+  } else {
+    state.announce = "DRAW";
+  }
+  const matchOver = state.wins[0] >= ROUNDS_TO_WIN || state.wins[1] >= ROUNDS_TO_WIN;
+  state.phase = matchOver ? "matchEnd" : "roundEnd";
+  state.phaseTicks = ROUND_END_TICKS;
+}
+
 export function stepMatch(state: MatchState, intents: [InputIntent, InputIntent]) {
   const [a, b] = state.fighters;
-  stepFighter(a, intents[0] ?? EMPTY_INTENT, b);
-  stepFighter(b, intents[1] ?? EMPTY_INTENT, a);
+  state.events.length = 0;
+
+  if (state.phase === "intro") {
+    state.phaseTicks--;
+    stepFighter(a, EMPTY_INTENT, b, false);
+    stepFighter(b, EMPTY_INTENT, a, false);
+    if (state.phaseTicks <= 0) {
+      state.phase = "fight";
+      state.announce = "FIGHT!";
+      state.phaseTicks = TICK_RATE;
+    }
+    state.tick++;
+    return state;
+  }
+
+  if (state.phase === "roundEnd" || state.phase === "matchEnd") {
+    state.phaseTicks--;
+    stepFighter(a, EMPTY_INTENT, b, false);
+    stepFighter(b, EMPTY_INTENT, a, false);
+    if (state.phaseTicks <= 0 && state.phase === "roundEnd") {
+      state.round++;
+      resetForRound(state);
+      state.phase = "intro";
+      state.phaseTicks = INTRO_TICKS;
+      state.announce = `ROUND ${state.round}`;
+    }
+    state.tick++;
+    return state;
+  }
+
+  // fight
+  if (state.phaseTicks > 0) state.phaseTicks--; // desvanece el "FIGHT!"
+  stepFighter(a, intents[0] ?? EMPTY_INTENT, b, true);
+  stepFighter(b, intents[1] ?? EMPTY_INTENT, a, true);
+
+  for (const e of stepCombat(state, a, b, TICK_DT)) state.events.push(e);
+  for (const e of stepCombat(state, b, a, TICK_DT)) state.events.push(e);
+
   resolveOverlap(a, b);
+
+  if (state.timer > 0) state.timer--;
+
+  const aDead = a.health <= 0;
+  const bDead = b.health <= 0;
+  if (aDead || bDead) {
+    state.announce = "K.O.";
+    endRound(state, aDead && bDead ? -1 : aDead ? 1 : 0);
+  } else if (state.timer <= 0) {
+    state.announce = "TIME UP";
+    const winner = a.health === b.health ? -1 : a.health > b.health ? 0 : 1;
+    endRound(state, winner);
+  }
+
   state.tick++;
   return state;
 }
