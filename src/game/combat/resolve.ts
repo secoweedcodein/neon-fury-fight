@@ -9,7 +9,7 @@ const COMBO_WINDOW = 45;
 const GUARD_BREAK_TICKS = 40;
 
 /** ¿El defensor está bloqueando este golpe? */
-function isBlocking(def: FighterState, atk: AttackDef, attacker: FighterState) {
+function isBlocking(def: FighterState, atk: AttackDef) {
   if (def.guardBroken > 0 || def.hitstun > 0) return false;
   if (!def.grounded) return false;
   if (atk.kind === "grab") return false;
@@ -35,7 +35,6 @@ export function stepCombat(
   state: MatchState,
   attacker: FighterState,
   defender: FighterState,
-  dt: number,
 ): HitEvent[] {
   const events: HitEvent[] = [];
   const act = attacker.action;
@@ -55,7 +54,7 @@ export function stepCombat(
     if (!invulnerable && sphereHitsBox(s, b)) {
       act.connected = true;
       act.hitConfirmed = true;
-      const blocked = isBlocking(defender, atk, attacker);
+      const blocked = isBlocking(defender, atk);
       const p = contactPoint(s, b);
 
       if (blocked) {

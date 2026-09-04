@@ -268,8 +268,8 @@ export function stepMatch(state: MatchState, intents: [InputIntent, InputIntent]
   stepFighter(a, intents[0] ?? EMPTY_INTENT, b, true);
   stepFighter(b, intents[1] ?? EMPTY_INTENT, a, true);
 
-  for (const e of stepCombat(state, a, b, TICK_DT)) state.events.push(e);
-  for (const e of stepCombat(state, b, a, TICK_DT)) state.events.push(e);
+  for (const e of stepCombat(state, a, b)) state.events.push(e);
+  for (const e of stepCombat(state, b, a)) state.events.push(e);
 
   resolveOverlap(a, b);
 

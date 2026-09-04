@@ -71,7 +71,6 @@ export function Fighter({ state }: Props) {
 
     // Flash al recibir impacto + retroceso del torso.
     const hit = s.flash > 0 ? s.flash / 8 : 0;
-    body.current.rotation.x += ((dodgeTilt - hit * 0.5) - body.current.rotation.x) * 0;
     if (torso.current) {
       const mat = torso.current.material as THREE.MeshStandardMaterial;
       mat.emissiveIntensity = 0.35 + hit * 3.2;
