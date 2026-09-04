@@ -220,14 +220,12 @@ function resetForRound(state: MatchState) {
   state.events.length = 0;
 }
 
-function endRound(state: MatchState, winner: number) {
+function endRound(state: MatchState, winner: number, reason: string) {
   state.lastRoundWinner = winner;
   if (winner === 0 || winner === 1) {
     state.wins[winner]++;
-    state.announce = `${getCharacter(state.fighters[winner].characterId).name} WINS`;
-  } else {
-    state.announce = "DRAW";
   }
+  state.announce = winner === -1 ? "DRAW" : reason;
   const matchOver = state.wins[0] >= ROUNDS_TO_WIN || state.wins[1] >= ROUNDS_TO_WIN;
   state.phase = matchOver ? "matchEnd" : "roundEnd";
   state.phaseTicks = ROUND_END_TICKS;
@@ -280,12 +278,10 @@ export function stepMatch(state: MatchState, intents: [InputIntent, InputIntent]
   const aDead = a.health <= 0;
   const bDead = b.health <= 0;
   if (aDead || bDead) {
-    state.announce = "K.O.";
-    endRound(state, aDead && bDead ? -1 : aDead ? 1 : 0);
+    endRound(state, aDead && bDead ? -1 : aDead ? 1 : 0, "K.O.");
   } else if (state.timer <= 0) {
-    state.announce = "TIME UP";
     const winner = a.health === b.health ? -1 : a.health > b.health ? 0 : 1;
-    endRound(state, winner);
+    endRound(state, winner, "TIME UP");
   }
 
   state.tick++;
