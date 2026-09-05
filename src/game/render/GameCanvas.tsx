@@ -63,6 +63,8 @@ export function GameCanvas({
   const p2 = useRef(match.current.fighters[1]);
   const [over, setOver] = useState(false);
 
+  useSimulationLoop(match, input, ai);
+
   useEffect(() => {
     const kb = input.current;
     kb.attach(window);
@@ -84,7 +86,6 @@ export function GameCanvas({
     <div className="fixed inset-0 bg-background">
       <Canvas shadows dpr={[1, 1.75]} camera={{ position: [0, 2.4, 12], fov: 52 }}>
         <TestStage />
-        <Simulation match={match} input={input} ai={ai} />
         <SideCamera match={match} />
         <Fighter state={p1} />
         <Fighter state={p2} />
