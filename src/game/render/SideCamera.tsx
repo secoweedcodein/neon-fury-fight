@@ -30,7 +30,7 @@ export function SideCamera({ match }: Props) {
     const height = 2.1 + midY * 0.5 + spread * 0.055;
 
     // Límite para no salir del escenario.
-    const clampedX = THREE.MathUtils.clamp(midX, -7.5, 7.5);
+    const clampedX = THREE.MathUtils.clamp(midX, -4.5, 4.5);
 
     desired.set(clampedX, height, midZ + dist);
     camera.position.lerp(desired, 1 - Math.exp(-5 * delta));

@@ -114,7 +114,7 @@ export const TICK_RATE = 60;
 export const TICK_DT = 1 / TICK_RATE;
 
 /** Límites del área jugable (se sobreescriben por mapa en la FASE 5). */
-export const STAGE_BOUNDS = { x: 13, z: 2.6 };
+export const STAGE_BOUNDS = { x: 8.5, z: 2.6 };
 
 /* Reglas de match (FASE 3) */
 export const ROUND_SECONDS = 99;

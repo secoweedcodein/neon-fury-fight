@@ -30,14 +30,14 @@ export class DummyAI {
     else if (dist < 1.0) intent.forward = -1;
 
     const r = this.rand();
-    const aggression = this.level === "easy" ? 0.02 : 0.06;
+    const aggression = this.level === "easy" ? 0.015 : 0.038;
 
     if (dist < 1.8 && this.cooldown === 0 && r < aggression) {
       if (r < aggression * 0.4) intent.light = true;
       else if (r < aggression * 0.7) intent.kick = true;
       else if (r < aggression * 0.9) intent.heavy = true;
       else intent.grab = true;
-      this.cooldown = this.level === "easy" ? 60 : 26;
+      this.cooldown = this.level === "easy" ? 80 : 42;
     } else if (dist < 2.4 && r > 0.72) {
       // Guardia pasiva
       intent.forward = -1;
