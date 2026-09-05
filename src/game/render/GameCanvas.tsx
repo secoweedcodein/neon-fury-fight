@@ -1,11 +1,11 @@
 // Bucle principal: tick fijo 60 Hz, input -> simulación -> render.
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { createMatchState, stepMatch } from "../core/sim";
 import { EMPTY_INTENT, TICK_DT, type MatchState } from "../core/types";
 import { KeyboardInput } from "../systems/input";
-import { DummyAI } from "../systems/ai";
+import { DummyAI, type AiLevel } from "../systems/ai";
 import { Fighter } from "./Fighter";
 import { HitSparks } from "./HitSparks";
 import { SideCamera } from "./SideCamera";
@@ -44,21 +44,39 @@ function Simulation({
 export function GameCanvas({
   playerCharacter = "ash",
   opponentCharacter = "vulcan",
+  aiLevel = "normal",
+  onExit,
+  onRematch,
 }: {
   playerCharacter?: string;
   opponentCharacter?: string;
+  aiLevel?: AiLevel;
+  onExit?: () => void;
+  onRematch?: () => void;
 }) {
   const match = useRef<MatchState>(createMatchState(playerCharacter, opponentCharacter));
   const input = useRef<KeyboardInput>(new KeyboardInput());
-  const ai = useRef<DummyAI>(new DummyAI("normal"));
+  const ai = useRef<DummyAI>(new DummyAI(aiLevel));
   const p1 = useRef(match.current.fighters[0]);
   const p2 = useRef(match.current.fighters[1]);
+  const [over, setOver] = useState(false);
 
   useEffect(() => {
     const kb = input.current;
     kb.attach(window);
-    return () => kb.dispose();
-  }, []);
+    const esc = (e: KeyboardEvent) => {
+      if (e.code === "Escape") onExit?.();
+    };
+    window.addEventListener("keydown", esc);
+    const poll = window.setInterval(() => {
+      setOver(match.current.phase === "matchEnd");
+    }, 250);
+    return () => {
+      kb.dispose();
+      window.removeEventListener("keydown", esc);
+      window.clearInterval(poll);
+    };
+  }, [onExit]);
 
   return (
     <div className="fixed inset-0 bg-background">
@@ -71,6 +89,25 @@ export function GameCanvas({
         <HitSparks match={match} />
       </Canvas>
       <CoreHud match={match} />
+
+      {over && (
+        <div className="absolute bottom-24 left-1/2 z-20 flex -translate-x-1/2 gap-3">
+          <button
+            type="button"
+            onClick={() => onRematch?.()}
+            className="rounded-sm border border-hud-stamina bg-hud-stamina/10 px-6 py-2 font-display tracking-[0.25em] text-hud-stamina"
+          >
+            REVANCHA
+          </button>
+          <button
+            type="button"
+            onClick={() => onExit?.()}
+            className="rounded-sm border border-border bg-card/70 px-6 py-2 font-display tracking-[0.25em] text-foreground"
+          >
+            MENÚ
+          </button>
+        </div>
+      )}
     </div>
   );
 }
