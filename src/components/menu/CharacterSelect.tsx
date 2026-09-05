@@ -30,7 +30,7 @@ function Portrait({
 }: {
   char: CharacterDef;
   selected: boolean;
-  tag?: string;
+  tag?: string | undefined;
   onClick: () => void;
 }) {
   return (

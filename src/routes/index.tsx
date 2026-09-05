@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 import { GameCanvas } from "../game/render/GameCanvas";
+import { CharacterSelect, type MatchSetup } from "../components/menu/CharacterSelect";
 
 export const Route = createFileRoute("/")({
   // El Canvas WebGL nunca debe renderizarse en el servidor.
@@ -26,5 +28,19 @@ export const Route = createFileRoute("/")({
 });
 
 function Play() {
-  return <GameCanvas />;
+  const [setup, setSetup] = useState<MatchSetup | null>(null);
+  const [runId, setRunId] = useState(0);
+
+  if (!setup) return <CharacterSelect onStart={setSetup} />;
+
+  return (
+    <GameCanvas
+      key={runId}
+      playerCharacter={setup.player}
+      opponentCharacter={setup.opponent}
+      aiLevel={setup.ai}
+      onExit={() => setSetup(null)}
+      onRematch={() => setRunId((n) => n + 1)}
+    />
+  );
 }
