@@ -12,33 +12,35 @@ import { SideCamera } from "./SideCamera";
 import { TestStage } from "./TestStage";
 import { CoreHud } from "../../components/hud/CoreHud";
 
-function Simulation({
-  match,
-  input,
-  ai,
-}: {
-  match: React.RefObject<MatchState>;
-  input: React.RefObject<KeyboardInput>;
-  ai: React.RefObject<DummyAI>;
-}) {
-  const accumulator = useRef(0);
-
-  useFrame((_, rawDelta) => {
-    const delta = Math.min(rawDelta, 0.1);
-    accumulator.current += delta;
-    let steps = 0;
-    while (accumulator.current >= TICK_DT && steps < 6) {
-      const m = match.current;
-      const intent = input.current?.readIntent() ?? EMPTY_INTENT;
-      const foe = ai.current?.think(m.fighters[1], m.fighters[0]) ?? EMPTY_INTENT;
-      stepMatch(m, [intent, foe]);
-      accumulator.current -= TICK_DT;
-      steps++;
-    }
-    if (steps === 6) accumulator.current = 0;
-  });
-
-  return null;
+/** Bucle de simulación independiente del render (rAF + tick fijo). */
+function useSimulationLoop(
+  match: React.RefObject<MatchState>,
+  input: React.RefObject<KeyboardInput>,
+  ai: React.RefObject<DummyAI>,
+) {
+  useEffect(() => {
+    let raf = 0;
+    let last = performance.now();
+    let acc = 0;
+    const loop = (now: number) => {
+      const delta = Math.min((now - last) / 1000, 0.1);
+      last = now;
+      acc += delta;
+      let steps = 0;
+      while (acc >= TICK_DT && steps < 6) {
+        const m = match.current;
+        const intent = input.current?.readIntent() ?? EMPTY_INTENT;
+        const foe = ai.current?.think(m.fighters[1], m.fighters[0]) ?? EMPTY_INTENT;
+        stepMatch(m, [intent, foe]);
+        acc -= TICK_DT;
+        steps++;
+      }
+      if (steps === 6) acc = 0;
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [match, input, ai]);
 }
 
 export function GameCanvas({
